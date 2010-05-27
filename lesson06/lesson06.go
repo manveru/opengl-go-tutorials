@@ -192,47 +192,50 @@ func drawGLScene() {
   /* Select Our Texture */
   gl.BindTexture(gl.TEXTURE_2D, texture[0])
 
-  gl.Begin(gl.TRIANGLES) // Draw triangles
-  // Front Face
-  gl.TexCoord2f(0.0, 1.0); gl.Vertex3f(-1.0, -1.0,  1.0);	// Bottom Left Of The Texture and Quad
-  gl.TexCoord2f(1.0, 1.0); gl.Vertex3f( 1.0, -1.0,  1.0);	// Bottom Right Of The Texture and Quad
-  gl.TexCoord2f(1.0, 0.0); gl.Vertex3f( 1.0,  1.0,  1.0);	// Top Right Of The Texture and Quad
-  gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(-1.0,  1.0,  1.0);	// Top Left Of The Texture and Quad
+  gl.Begin(gl.QUADS) // Draw a quad
+  /* Front Face */
+  gl.TexCoord2f(0.0, 1.0); gl.Vertex3f(-1.0, -1.0, 1.0) // Bottom left
+  gl.TexCoord2f(1.0, 1.0); gl.Vertex3f( 1.0, -1.0, 1.0) // Bottom right
+  gl.TexCoord2f(1.0, 0.0); gl.Vertex3f( 1.0,  1.0, 1.0) // Top right
+  gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(-1.0,  1.0, 1.0) // Top left
 
-  gl.Color3f(1.0, 1.0, 1.0)
-  // Back Face
-  gl.Vertex3f(-1.0, -1.0, -1.0);	// Bottom Right Of The Texture and Quad
-  gl.Vertex3f(-1.0,  1.0, -1.0);	// Top Right Of The Texture and Quad
-  gl.Vertex3f( 1.0,  1.0, -1.0);	// Top Left Of The Texture and Quad
-  gl.Vertex3f( 1.0, -1.0, -1.0);	// Bottom Left Of The Texture and Quad
+  /* Back Face */
+  gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(-1.0, -1.0, -1.0) // Bottom right
+  gl.TexCoord2f(0.0, 1.0); gl.Vertex3f(-1.0,  1.0, -1.0) // Top right
+  gl.TexCoord2f(1.0, 1.0); gl.Vertex3f( 1.0,  1.0, -1.0) // Top left
+  gl.TexCoord2f(1.0, 0.0); gl.Vertex3f( 1.0, -1.0, -1.0) // Bottom left
 
-  gl.Vertex3f(-1.0,  1.0, -1.0);	// Top Left Of The Texture and Quad
-  gl.Vertex3f(-1.0,  1.0,  1.0);	// Bottom Left Of The Texture and Quad
-  gl.Vertex3f( 1.0,  1.0,  1.0);	// Bottom Right Of The Texture and Quad
-  gl.Vertex3f( 1.0,  1.0, -1.0);	// Top Right Of The Texture and Quad
+  /* Top Face */
+  gl.TexCoord2f(1.0, 1.0); gl.Vertex3f(-1.0,  1.0, -1.0) // Top left
+  gl.TexCoord2f(1.0, 0.0); gl.Vertex3f(-1.0,  1.0,  1.0) // Bottom left
+  gl.TexCoord2f(0.0, 0.0); gl.Vertex3f( 1.0,  1.0,  1.0) // Bottom right
+  gl.TexCoord2f(0.0, 1.0); gl.Vertex3f( 1.0,  1.0, -1.0) // Top right
 
-  gl.Vertex3f(-1.0, -1.0, -1.0);	// Top Right Of The Texture and Quad
-  gl.Vertex3f( 1.0, -1.0, -1.0);	// Top Left Of The Texture and Quad
-  gl.Vertex3f( 1.0, -1.0,  1.0);	// Bottom Left Of The Texture and Quad
-  gl.Vertex3f(-1.0, -1.0,  1.0);	// Bottom Right Of The Texture and Quad
+  /* Bottom Face */
+  gl.TexCoord2f(0.0, 1.0); gl.Vertex3f(-1.0, -1.0, -1.0) // Top right
+  gl.TexCoord2f(1.0, 1.0); gl.Vertex3f( 1.0, -1.0, -1.0) // Top left
+  gl.TexCoord2f(1.0, 0.0); gl.Vertex3f( 1.0, -1.0,  1.0) // Bottom left
+  gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(-1.0, -1.0,  1.0) // Bottom right
 
-  gl.Vertex3f( 1.0, -1.0, -1.0);	// Bottom Right Of The Texture and Quad
-  gl.Vertex3f( 1.0,  1.0, -1.0);	// Top Right Of The Texture and Quad
-  gl.Vertex3f( 1.0,  1.0,  1.0);	// Top Left Of The Texture and Quad
-  gl.Vertex3f( 1.0, -1.0,  1.0);	// Bottom Left Of The Texture and Quad
+  /* Right face */
+  gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(1.0, -1.0, -1.0) // Bottom right
+  gl.TexCoord2f(0.0, 1.0); gl.Vertex3f(1.0,  1.0, -1.0) // Top right
+  gl.TexCoord2f(1.0, 1.0); gl.Vertex3f(1.0,  1.0,  1.0) // Top left
+  gl.TexCoord2f(1.0, 0.0); gl.Vertex3f(1.0, -1.0,  1.0) // Bottom left
 
-  gl.Vertex3f(-1.0, -1.0, -1.0);	// Bottom Left Of The Texture and Quad
-  gl.Vertex3f(-1.0, -1.0,  1.0);	// Bottom Right Of The Texture and Quad
-  gl.Vertex3f(-1.0,  1.0,  1.0);	// Top Right Of The Texture and Quad
-  gl.Vertex3f(-1.0,  1.0, -1.0);	// Top Left Of The Texture and Quad
-  gl.End()                      // done drawing the quad
+  /* Left Face */
+  gl.TexCoord2f(1.0, 0.0); gl.Vertex3f(-1.0, -1.0, -1.0) // Bottom left
+  gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(-1.0, -1.0,  1.0) // Bottom right
+  gl.TexCoord2f(0.0, 1.0); gl.Vertex3f(-1.0,  1.0,  1.0) // Top right
+  gl.TexCoord2f(1.0, 1.0); gl.Vertex3f(-1.0,  1.0, -1.0) // Top left
+  gl.End() // done drawing the quad
 
   // Draw to the screen
   sdl.GL_SwapBuffers()
 
-//   xrot += 0.3 /* X Axis Rotation */
-//   yrot += 0.2 /* Y Axis Rotation */
-//   zrot += 0.4 /* Z Axis Rotation */
+  xrot += 0.3 /* X Axis Rotation */
+  yrot += 0.2 /* Y Axis Rotation */
+  zrot += 0.4 /* Z Axis Rotation */
 
   // Gather our frames per second
   frames++
