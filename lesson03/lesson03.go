@@ -3,6 +3,7 @@ package main
 import (
   "fmt"
   "gl"
+  "math"
   "os"
   "sdl"
 )
