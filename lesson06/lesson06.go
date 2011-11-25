@@ -6,7 +6,6 @@ import (
   "os"
   "sdl"
   "math"
-  "unsafe"
 )
 
 const (
@@ -36,7 +35,7 @@ func resizeWindow(width, height int) {
   }
 
   // Setup our viewport
-  gl.Viewport(0, 0, gl.GLsizei(width), gl.GLsizei(height))
+  gl.Viewport(0, 0, width, height)
 
   // change to the projection matrix and set our viewing volume.
   gl.MatrixMode(gl.PROJECTION)
@@ -55,7 +54,7 @@ func resizeWindow(width, height int) {
   bottom := -top
   left := aspect * bottom
   right := aspect * top
-  gl.Frustum(left, right, bottom, top, near, far)
+  gl.Frustum(float64(left), float64(right), float64(bottom), float64(top), float64(near), float64(far))
 
   // Make sure we're changing the model view and not the projection
   gl.MatrixMode(gl.MODELVIEW)
@@ -103,16 +102,15 @@ var (
   xrot gl.GLfloat // X Rotation
   yrot gl.GLfloat // Y Rotation
   zrot gl.GLfloat // Z Rotation
-  texture [1]gl.GLuint // Storage For One Texture ( NEW )
+  texture gl.Texture
 )
 
 // load in bitmap as a GL texture
 func LoadGLTexture(path string) {
-  // storage space for the texture
-  textureImage := [1]*sdl.Surface{}
-
   image := sdl.Load(path)
   if image == nil { panic(sdl.GetError()) }
+
+  fmt.Println("here");
 
   // Check that the image's width is a power of 2
   if image.W & (image.W - 1) != 0 {
@@ -144,36 +142,35 @@ func LoadGLTexture(path string) {
     fmt.Println("warning:", path, "is not truecolor, this will probably break")
   }
 
-  textureImage[0] = image
-
   // Create the texture
-  gl.GenTextures(
-    1,
-    (*gl.GLuint)(unsafe.Pointer(textureImage[0])),
-  )
+  texture = gl.GenTexture()
 
   // Typical texture generation using data from the bitmap
-  gl.BindTexture(gl.TEXTURE_2D, texture[0])
+  texture.Bind(gl.TEXTURE_2D)
+
+  fmt.Println("Generating image")
+  fmt.Println(image)
 
   // Generate the texture
   gl.TexImage2D(
     gl.TEXTURE_2D,
     0,
-    gl.GLint(textureImage[0].Format.BytesPerPixel),
-    gl.GLsizei(textureImage[0].W),
-    gl.GLsizei(textureImage[0].H),
+    int(image.Format.BytesPerPixel),
+    int(image.W),
+    int(image.H),
     0,
     textureFormat,
     gl.UNSIGNED_BYTE,
-    unsafe.Pointer(textureImage[0].Pixels),
+    image.Pixels,
   )
+  fmt.Println("Generated")
 
   // linear filtering
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
   // free up memory we have used.
-  textureImage[0].Free()
+  image.Free()
 }
 
 // Here goes our drawing code
@@ -185,12 +182,12 @@ func drawGLScene() {
   gl.LoadIdentity()
   gl.Translatef(0.0, 0.0, -7.0)
 
-  gl.Rotatef(xrot, 1.0, 0.0, 0.0) /* Rotate On The X Axis */
-  gl.Rotatef(yrot, 0.0, 1.0, 0.0) /* Rotate On The Y Axis */
-  gl.Rotatef(zrot, 0.0, 0.0, 1.0) /* Rotate On The Z Axis */
+  gl.Rotatef(float32(xrot), 1.0, 0.0, 0.0) /* Rotate On The X Axis */
+  gl.Rotatef(float32(yrot), 0.0, 1.0, 0.0) /* Rotate On The Y Axis */
+  gl.Rotatef(float32(zrot), 0.0, 0.0, 1.0) /* Rotate On The Z Axis */
 
   /* Select Our Texture */
-  gl.BindTexture(gl.TEXTURE_2D, texture[0])
+  gl.BindTexture(gl.TEXTURE_2D, uint(texture))
 
   gl.Begin(gl.QUADS) // Draw a quad
   /* Front Face */
@@ -266,7 +263,7 @@ func main() {
   // videoFlags |= sdl.RESIZABLE // Enable window resizing
 
   // get a SDL surface
-  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, videoFlags)
+  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, uint32(videoFlags))
 
   // verify there is a surface
   if surface == nil {
@@ -277,7 +274,9 @@ func main() {
   // When this function is finished, clean up and exit.
   defer Quit(0)
 
+  fmt.Println("Loading image");
   LoadGLTexture("data/nehe.bmp")
+  fmt.Println("Image loaded")
 
   // Initialize OpenGL
   initGL()
@@ -288,30 +287,24 @@ func main() {
   // wait for events
   running := true
   isActive := true
-  event := sdl.Event{}
   for running {
-    for event.Poll() {
-      switch event.Type {
-      case sdl.ACTIVEEVENT:
-        // Something happened with our focus, if we lost focus we are
-        // iconified, we shouldn't draw the screen.
-        isActive = event.Active().Gain != 0
-      case sdl.VIDEORESIZE:
-        // handle resize event
-        resize := event.Resize()
-        width, height := int(resize.W), int(resize.H)
-        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, videoFlags)
-
+    for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
+      switch e := ev.(type) {
+      case *sdl.ActiveEvent:
+        isActive = e.Gain != 0
+      case *sdl.ResizeEvent:
+        width, height := int(e.W), int(e.H)
+        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, uint32(videoFlags))
         if surface == nil {
           fmt.Println("Could not get a surface after resize:", sdl.GetError())
           Quit(1)
         }
         resizeWindow(width, height)
-      case sdl.KEYDOWN:
-        // handle key presses
-        handleKeyPress(event.Keyboard().Keysym)
-      case sdl.QUIT:
-        // handle quit request
+      case *sdl.KeyboardEvent:
+        if (e.Type == sdl.KEYDOWN) {
+          handleKeyPress(e.Keysym)
+        }
+      case *sdl.QuitEvent:
         running = false
       }
     }

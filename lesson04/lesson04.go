@@ -35,7 +35,7 @@ func resizeWindow(width, height int) {
   }
 
   // Setup our viewport
-  gl.Viewport(0, 0, gl.GLsizei(width), gl.GLsizei(height))
+  gl.Viewport(0, 0, width, height)
 
   // change to the projection matrix and set our viewing volume.
   gl.MatrixMode(gl.PROJECTION)
@@ -54,7 +54,7 @@ func resizeWindow(width, height int) {
   bottom := -top
   left := aspect * bottom
   right := aspect * top
-  gl.Frustum(left, right, bottom, top, near, far)
+  gl.Frustum(float64(left), float64(right), float64(bottom), float64(top), float64(near), float64(far))
 
   // Make sure we're changing the model view and not the projection
   gl.MatrixMode(gl.MODELVIEW)
@@ -108,7 +108,7 @@ func drawGLScene() {
   // Move left 1.5 units and into the screen 6.0 units.
   gl.LoadIdentity()
   gl.Translatef(-1.5, 0.0, -6.0)
-  gl.Rotatef(rtri, 0.0, 1.0, 0.0) // Rotate the triangle on the Y axis
+  gl.Rotatef(float32(rtri), 0.0, 1.0, 0.0) // Rotate the triangle on the Y axis
 
   gl.Begin(gl.TRIANGLES)       // Draw triangles
   gl.Color3f(1.0, 0.0, 0.0)    // Set The Color To Red
@@ -123,7 +123,7 @@ func drawGLScene() {
   gl.LoadIdentity()
   gl.Translatef(1.5, 0.0, -6.0)
   gl.Color3f(0.5, 0.5, 1.0)        // Set The Color To Blue One Time Only
-  gl.Rotatef(rquad, 1.0, 0.0, 0.0) // rotate the quad on the X axis
+  gl.Rotatef(float32(rquad), 1.0, 0.0, 0.0) // rotate the quad on the X axis
 
   gl.Begin(gl.QUADS)           // draw quads
   gl.Vertex3f(-1.0, 1.0, 0.0)  // top left
@@ -164,7 +164,7 @@ func main() {
   // videoFlags |= sdl.RESIZABLE // Enable window resizing
 
   // get a SDL surface
-  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, videoFlags)
+  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, uint32(videoFlags))
 
   // verify there is a surface
   if surface == nil {
@@ -187,34 +187,27 @@ func main() {
   // wait for events
   running := true
   isActive := true
-  event := sdl.Event{}
   for running {
-    for event.Poll() {
-      switch event.Type {
-      case sdl.ACTIVEEVENT:
-        // Something happened with our focus, if we lost focus we are
-        // iconified, we shouldn't draw the screen.
-        isActive = event.Active().Gain != 0
-      case sdl.VIDEORESIZE:
-        // handle resize event
-        resize := event.Resize()
-        width, height := int(resize.W), int(resize.H)
-        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, videoFlags)
-
+    for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
+      switch e := ev.(type) {
+      case *sdl.ActiveEvent:
+        isActive = e.Gain != 0
+      case *sdl.ResizeEvent:
+        width, height := int(e.W), int(e.H)
+        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, uint32(videoFlags))
         if surface == nil {
           fmt.Println("Could not get a surface after resize:", sdl.GetError())
           Quit(1)
         }
         resizeWindow(width, height)
-      case sdl.KEYDOWN:
-        // handle key presses
-        handleKeyPress(event.Keyboard().Keysym)
-      case sdl.QUIT:
-        // handle quit request
+      case *sdl.KeyboardEvent:
+        if (e.Type == sdl.KEYDOWN) {
+          handleKeyPress(e.Keysym)
+        }
+      case *sdl.QuitEvent:
         running = false
       }
     }
-
     // draw the scene
     if isActive {
       drawGLScene()
