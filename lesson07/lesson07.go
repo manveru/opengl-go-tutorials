@@ -3,10 +3,10 @@ package main
 import (
   "fmt"
   "gl"
+  "gl/glu"
   "os"
   "sdl"
   "math"
-  "unsafe"
 )
 
 func p(a ...interface{}) { fmt.Println(a) }
@@ -31,16 +31,16 @@ var (
   yspeed   gl.GLfloat // Y Rotation Speed
   z gl.GLfloat = -5.0 // Depth Into The Screen
 
-  lightAmbient1  = [4]gl.GLfloat{0.0, 1.0, 0.0, 1.0} // Ambient light values
-  lightDiffuse1  = [4]gl.GLfloat{0.0, 1.0, 0.0, 1.0} // Diffuse light values
-  lightPosition1 = [4]gl.GLfloat{2.0, 0.0, 2.0, 1.0} // Light position
+  lightAmbient1  = [4]float32{0.0, 1.0, 0.0, 1.0} // Ambient light values
+  lightDiffuse1  = [4]float32{0.0, 1.0, 0.0, 1.0} // Diffuse light values
+  lightPosition1 = [4]float32{2.0, 0.0, 2.0, 1.0} // Light position
 
-  lightAmbient2  = [4]gl.GLfloat{1.0, 0.0, 0.0, 1.0} // Ambient light values
-  lightDiffuse2  = [4]gl.GLfloat{1.0, 0.0, 0.0, 1.0} // Diffuse light values
-  lightPosition2 = [4]gl.GLfloat{-2.0, 0.0, 2.0, 1.0} // Light position
+  lightAmbient2  = [4]float32{1.0, 0.0, 0.0, 1.0} // Ambient light values
+  lightDiffuse2  = [4]float32{1.0, 0.0, 0.0, 1.0} // Diffuse light values
+  lightPosition2 = [4]float32{-2.0, 0.0, 2.0, 1.0} // Light position
 
   filter gl.GLuint     // Which filter to use
-  texture [3]gl.GLuint // Storage for 3 textures
+  textures [3]gl.Texture // Storage for 3 textures
 )
 
 // release/destroy our resources and restoring the old desktop
@@ -60,7 +60,7 @@ func resizeWindow(width, height int) {
   }
 
   // Setup our viewport
-  gl.Viewport(0, 0, gl.GLsizei(width), gl.GLsizei(height))
+  gl.Viewport(0, 0, width, height)
 
   // change to the projection matrix and set our viewing volume.
   gl.MatrixMode(gl.PROJECTION)
@@ -79,7 +79,7 @@ func resizeWindow(width, height int) {
   bottom := -top
   left := aspect * bottom
   right := aspect * top
-  gl.Frustum(left, right, bottom, top, near, far)
+  gl.Frustum(float64(left), float64(right), float64(bottom), float64(top), float64(near), float64(far))
 
   // Make sure we're changing the model view and not the projection
   gl.MatrixMode(gl.MODELVIEW)
@@ -133,22 +133,19 @@ func initGL() {
   gl.Hint(gl.PERSPECTIVE_CORRECTION_HINT, gl.NICEST)
 
   // Setup the light
-  gl.Lightfv(gl.LIGHT1, gl.AMBIENT,  (*gl.GLfloat)(unsafe.Pointer(&lightAmbient1 ))) // ambient lighting
-  gl.Lightfv(gl.LIGHT1, gl.DIFFUSE,  (*gl.GLfloat)(unsafe.Pointer(&lightDiffuse1 ))) // make it diffuse
-  gl.Lightfv(gl.LIGHT1, gl.POSITION, (*gl.GLfloat)(unsafe.Pointer(&lightPosition1))) // and place it
+  gl.Lightfv(gl.LIGHT1, gl.AMBIENT, lightAmbient1[:]) // ambient lighting
+  gl.Lightfv(gl.LIGHT1, gl.DIFFUSE, lightDiffuse1[:]) // make it diffuse
+  gl.Lightfv(gl.LIGHT1, gl.POSITION, lightPosition1[:]) // and place it
   gl.Enable(gl.LIGHT1) // and finally turn it on.
 
-  gl.Lightfv(gl.LIGHT2, gl.AMBIENT,  (*gl.GLfloat)(unsafe.Pointer(&lightAmbient2 ))) // ambient lighting
-  gl.Lightfv(gl.LIGHT2, gl.DIFFUSE,  (*gl.GLfloat)(unsafe.Pointer(&lightDiffuse2 ))) // make it diffuse
-  gl.Lightfv(gl.LIGHT2, gl.POSITION, (*gl.GLfloat)(unsafe.Pointer(&lightPosition2))) // and place it
+  gl.Lightfv(gl.LIGHT2, gl.AMBIENT, lightAmbient2[:]) // ambient lighting
+  gl.Lightfv(gl.LIGHT2, gl.DIFFUSE, lightDiffuse2[:]) // make it diffuse
+  gl.Lightfv(gl.LIGHT2, gl.POSITION, lightPosition2[:]) // and place it
   gl.Enable(gl.LIGHT2) // and finally turn it on.
 }
 
 // load in bitmap as a GL texture
 func LoadGLTextures(path string) {
-  // storage space for the textures
-  textureImage := [3]*sdl.Surface{}
-
   image := sdl.Load(path)
   if image == nil { panic(sdl.GetError()) }
 
@@ -182,26 +179,21 @@ func LoadGLTextures(path string) {
     fmt.Println("warning:", path, "is not truecolor, this will probably break")
   }
 
-  textureImage[0] = image
-
   // Create the textures
-  gl.GenTextures(
-    3,
-    (*gl.GLuint)(unsafe.Pointer(textureImage[0])),
-  )
+  gl.GenTextures(textures[:])
 
   // First texture
-  gl.BindTexture(gl.TEXTURE_2D, texture[0])
+  gl.BindTexture(gl.TEXTURE_2D, uint(textures[0]))
   gl.TexImage2D(
     gl.TEXTURE_2D,
     0,
     3,
-    gl.GLsizei(textureImage[0].W),
-    gl.GLsizei(textureImage[0].H),
+    int(image.W),
+    int(image.H),
     0,
     textureFormat,
     gl.UNSIGNED_BYTE,
-    unsafe.Pointer(textureImage[0].Pixels),
+    image.Pixels,
   )
 
   // linear filtering
@@ -210,13 +202,13 @@ func LoadGLTextures(path string) {
 
 
   // Second texture
-  gl.BindTexture(gl.TEXTURE_2D, texture[1])
+  gl.BindTexture(gl.TEXTURE_2D, uint(textures[1]))
   gl.TexImage2D(gl.TEXTURE_2D, 0,
     3,
-    gl.GLsizei(textureImage[0].W),
-    gl.GLsizei(textureImage[0].H),
+    int(image.W),
+    int(image.H),
     0, textureFormat, gl.UNSIGNED_BYTE,
-    unsafe.Pointer(textureImage[0].Pixels),
+    image.Pixels,
   )
 
   // Mipmapped filtering
@@ -225,28 +217,29 @@ func LoadGLTextures(path string) {
 
 
   // Third texture
-  gl.BindTexture(gl.TEXTURE_2D, texture[2])
+  gl.BindTexture(gl.TEXTURE_2D, uint(textures[2]))
   gl.TexImage2D(gl.TEXTURE_2D, 0,
     3,
-    gl.GLsizei(textureImage[0].W),
-    gl.GLsizei(textureImage[0].H),
+    int(image.W),
+    int(image.H),
     0, textureFormat, gl.UNSIGNED_BYTE,
-    unsafe.Pointer(textureImage[0].Pixels),
+    image.Pixels,
   )
 
   // Mipmapped filtering
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-  gl.Build2DMipmaps(
+  glu.Build2DMipmaps(
     gl.TEXTURE_2D,
     3,
-    gl.GLsizei(textureImage[0].W),
-    gl.GLsizei(textureImage[0].H),
+    int(image.W),
+    int(image.H),
     textureFormat,
-    gl.UNSIGNED_BYTE,
-    unsafe.Pointer(textureImage[0].Pixels),
+    image.Pixels,
   )
+
+  image.Free();
 }
 
 // Here goes our drawing code
@@ -256,13 +249,13 @@ func drawGLScene() {
 
   // Move left 1.5 units and into the screen 6.0 units.
   gl.LoadIdentity()
-  gl.Translatef(0.0, 0.0, z) // translate by z
+  gl.Translatef(0.0, 0.0, float32(z)) // translate by z
 
-  gl.Rotatef(xrot, 1.0, 0.0, 0.0) /* Rotate On The X Axis */
-  gl.Rotatef(yrot, 0.0, 1.0, 0.0) /* Rotate On The Y Axis */
+  gl.Rotatef(float32(xrot), 1.0, 0.0, 0.0) /* Rotate On The X Axis */
+  gl.Rotatef(float32(yrot), 0.0, 1.0, 0.0) /* Rotate On The Y Axis */
 
   /* Select Our Texture */
-  gl.BindTexture(gl.TEXTURE_2D, texture[filter]) // based on filter
+  gl.BindTexture(gl.TEXTURE_2D, uint(textures[filter])) // based on filter
 
   gl.Begin(gl.QUADS)
 
@@ -347,7 +340,7 @@ func main() {
   // videoFlags |= sdl.RESIZABLE // Enable window resizing
 
   // get a SDL surface
-  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, videoFlags)
+  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, uint32(videoFlags))
 
   // verify there is a surface
   if surface == nil {
@@ -362,37 +355,30 @@ func main() {
 
   // Initialize OpenGL
   initGL()
-
   // Resize the initial window
   resizeWindow(SCREEN_WIDTH, SCREEN_HEIGHT)
 
   // wait for events
   running := true
   isActive := true
-  event := sdl.Event{}
   for running {
-    for event.Poll() {
-      switch event.Type {
-      case sdl.ACTIVEEVENT:
-        // Something happened with our focus, if we lost focus we are
-        // iconified, we shouldn't draw the screen.
-        isActive = event.Active().Gain != 0
-      case sdl.VIDEORESIZE:
-        // handle resize event
-        resize := event.Resize()
-        width, height := int(resize.W), int(resize.H)
-        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, videoFlags)
-
+    for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
+      switch e := ev.(type) {
+      case *sdl.ActiveEvent:
+        isActive = e.Gain != 0
+      case *sdl.ResizeEvent:
+        width, height := int(e.W), int(e.H)
+        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, uint32(videoFlags))
         if surface == nil {
           fmt.Println("Could not get a surface after resize:", sdl.GetError())
           Quit(1)
         }
         resizeWindow(width, height)
-      case sdl.KEYDOWN:
-        // handle key presses
-        handleKeyPress(event.Keyboard().Keysym)
-      case sdl.QUIT:
-        // handle quit request
+      case *sdl.KeyboardEvent:
+        if (e.Type == sdl.KEYDOWN) {
+          handleKeyPress(e.Keysym)
+        }
+      case *sdl.QuitEvent:
         running = false
       }
     }

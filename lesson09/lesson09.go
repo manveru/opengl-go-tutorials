@@ -7,7 +7,6 @@ import (
   "os"
   "rand"
   "sdl"
-  "unsafe"
 )
 
 func p(a ...interface{}) { fmt.Println(a) }
@@ -35,7 +34,7 @@ var (
   tilt gl.GLfloat = 90.0
   spin gl.GLfloat
 
-  textures = [1]gl.GLuint{}
+  texture gl.Texture
 )
 
 // Load bitmap from path as GL texture
@@ -75,22 +74,15 @@ func LoadGLTexture(path string) {
     fmt.Println("warning:", path, "is not truecolor, this will probably break")
   }
 
-  // storage space for the texture
-  storage := [1]*sdl.Surface{image}
-
-  // Create the texture
-  gl.GenTextures(
-    1,
-    (*gl.GLuint)(unsafe.Pointer(storage[0])),
-  )
+  texture = gl.GenTexture()
 
   // Typical texture generation using data from the bitmap
-  gl.BindTexture(gl.TEXTURE_2D, textures[0])
+  gl.BindTexture(gl.TEXTURE_2D, uint(texture))
 
   // Generate the texture
-  gl.TexImage2D(gl.TEXTURE_2D, 0, gl.GLint(image.Format.BytesPerPixel),
-    gl.GLsizei(image.W), gl.GLsizei(image.H),
-    0, textureFormat, gl.UNSIGNED_BYTE, unsafe.Pointer(image.Pixels),
+  gl.TexImage2D(gl.TEXTURE_2D, 0, int(image.Format.BytesPerPixel),
+    int(image.W), int(image.H),
+    0, textureFormat, gl.UNSIGNED_BYTE, image.Pixels,
   )
 
   // linear filtering
@@ -118,7 +110,7 @@ func resizeWindow(width, height int) {
   }
 
   // Setup our viewport
-  gl.Viewport(0, 0, gl.GLsizei(width), gl.GLsizei(height))
+  gl.Viewport(0, 0, width, height)
 
   // change to the projection matrix and set our viewing volume.
   gl.MatrixMode(gl.PROJECTION)
@@ -137,7 +129,7 @@ func resizeWindow(width, height int) {
   bottom := -top
   left := aspect * bottom
   right := aspect * top
-  gl.Frustum(left, right, bottom, top, near, far)
+  gl.Frustum(float64(left), float64(right), float64(bottom), float64(top), float64(near), float64(far))
 
   // Make sure we're changing the model view and not the projection
   gl.MatrixMode(gl.MODELVIEW)
@@ -183,20 +175,20 @@ func initGL() {
 func drawGLScene() {
   // Clear the screen and depth buffer
   gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-  gl.BindTexture(gl.TEXTURE_2D, textures[0])
+  gl.BindTexture(gl.TEXTURE_2D, uint(texture))
 
   for loop, star := range stars {
     gl.LoadIdentity()
-    gl.Translatef(0.0, 0.0, zoom)
-    gl.Rotatef(tilt, 1.0, 0.0, 0.0)
-    gl.Rotatef(star.angle, 0.0, 1.0, 0.0)
-    gl.Translatef(star.dist, 0.0, 0.0)
-    gl.Rotatef(-star.angle, 0.0, 1.0, 0.0)
-    gl.Rotatef(-tilt, 1.0, 0.0, 0.0)
+    gl.Translatef(0.0, 0.0, float32(zoom))
+    gl.Rotatef(float32(tilt), 1.0, 0.0, 0.0)
+    gl.Rotatef(float32(star.angle), 0.0, 1.0, 0.0)
+    gl.Translatef(float32(star.dist), 0.0, 0.0)
+    gl.Rotatef(float32(-star.angle), 0.0, 1.0, 0.0)
+    gl.Rotatef(float32(-tilt), 1.0, 0.0, 0.0)
 
     if twinkle {
       other := stars[(num - loop) - 1]
-      gl.Color4ub(other.r, other.g, other.b, 255)
+      gl.Color4ub(uint8(other.r), uint8(other.g), uint8(other.b), 255)
       gl.Begin(gl.QUADS)
         gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(-1.0, -1.0, 0.0)
         gl.TexCoord2f(1.0, 0.0); gl.Vertex3f( 1.0, -1.0, 0.0)
@@ -205,8 +197,8 @@ func drawGLScene() {
       gl.End()
     }
 
-    gl.Rotatef(spin, 0.0, 0.0, 1.0)
-    gl.Color4ub(star.r, star.g, star.b, 255)
+    gl.Rotatef(float32(spin), 0.0, 0.0, 1.0)
+    gl.Color4ub(uint8(star.r), uint8(star.g), uint8(star.b), 255)
     gl.Begin(gl.QUADS)
       gl.TexCoord2f(0.0, 0.0); gl.Vertex3f(-1.0, -1.0, 0.0)
       gl.TexCoord2f(1.0, 0.0); gl.Vertex3f( 1.0, -1.0, 0.0)
@@ -220,9 +212,9 @@ func drawGLScene() {
 
     if star.dist < 0.0 {
       star.dist += 5.0
-      star.r = gl.GLubyte(rand.Float() * 255)
-      star.g = gl.GLubyte(rand.Float() * 255)
-      star.b = gl.GLubyte(rand.Float() * 255)
+      star.r = gl.GLubyte(rand.Float32() * 255)
+      star.g = gl.GLubyte(rand.Float32() * 255)
+      star.b = gl.GLubyte(rand.Float32() * 255)
     }
   }
 
@@ -247,9 +239,9 @@ func initStars() {
     stars[loop] = &Star{
       angle: 0.0,
       dist: (gl.GLfloat(loop) / gl.GLfloat(num)) * 5.0,
-      r: gl.GLubyte(rand.Float() * 255),
-      g: gl.GLubyte(rand.Float() * 255),
-      b: gl.GLubyte(rand.Float() * 255),
+      r: gl.GLubyte(rand.Float32() * 255),
+      g: gl.GLubyte(rand.Float32() * 255),
+      b: gl.GLubyte(rand.Float32() * 255),
     }
   }
 }
@@ -266,7 +258,7 @@ func main() {
   videoFlags |= sdl.HWPALETTE // Store the palette in hardware
   // videoFlags |= sdl.RESIZABLE // Enable window resizing
 
-  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, videoFlags)
+  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, uint32(videoFlags))
 
   if surface == nil {
     panic("Video mode set failed: " + sdl.GetError())
@@ -284,30 +276,24 @@ func main() {
   // wait for events
   running := true
   isActive := true
-  event := sdl.Event{}
   for running {
-    for event.Poll() {
-      switch event.Type {
-      case sdl.ACTIVEEVENT:
-        // Something happened with our focus, if we lost focus we are
-        // iconified, we shouldn't draw the screen.
-        isActive = event.Active().Gain != 0
-      case sdl.VIDEORESIZE:
-        // handle resize event
-        resize := event.Resize()
-        width, height := int(resize.W), int(resize.H)
-        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, videoFlags)
-
+    for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
+      switch e := ev.(type) {
+      case *sdl.ActiveEvent:
+        isActive = e.Gain != 0
+      case *sdl.ResizeEvent:
+        width, height := int(e.W), int(e.H)
+        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, uint32(videoFlags))
         if surface == nil {
           fmt.Println("Could not get a surface after resize:", sdl.GetError())
           Quit(1)
         }
         resizeWindow(width, height)
-      case sdl.KEYDOWN:
-        // handle key presses
-        handleKeyPress(event.Keyboard().Keysym)
-      case sdl.QUIT:
-        // handle quit request
+      case *sdl.KeyboardEvent:
+        if (e.Type == sdl.KEYDOWN) {
+          handleKeyPress(e.Keysym)
+        }
+      case *sdl.QuitEvent:
         running = false
       }
     }

@@ -9,7 +9,6 @@ import (
   "math"
   "os"
   "sdl"
-  "unsafe"
   "container/vector"
 )
 
@@ -32,12 +31,12 @@ var (
   walkbias, walkbiasangle float64 // head-bobbing....
   lookupdown gl.GLfloat
 
-  lightAmbient  = [4]gl.GLfloat{0.5, 0.5, 0.5, 1.0}
-  lightDiffuse  = [4]gl.GLfloat{1.0, 1.0, 1.0, 1.0}
-  lightPosition = [4]gl.GLfloat{0.0, 0.0, 2.0, 1.0}
+  lightAmbient  = [4]float32{0.5, 0.5, 0.5, 1.0}
+  lightDiffuse  = [4]float32{1.0, 1.0, 1.0, 1.0}
+  lightPosition = [4]float32{0.0, 0.0, 2.0, 1.0}
 
   filter gl.GLuint
-  textures [3]gl.GLuint
+  textures [3]gl.Texture
 )
 
 type Vertex struct {
@@ -54,20 +53,19 @@ func p(a ...interface{}) { fmt.Println(a) }
 func LoadGLTextures(path string) {
   // storage space for the textures
   image, format := LoadImage(path)
-  texture := [3]*sdl.Surface{image}
 
   // Create the textures
-  gl.GenTextures(3, (*gl.GLuint)(unsafe.Pointer(texture[0])))
+  gl.GenTextures(textures[:])
 
-  genTexture(textures[0], texture[0], format)
+  genTexture(textures[0], image, format)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-  genTexture(textures[1], texture[0], format)
+  genTexture(textures[1], image, format)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-  genTexture(textures[2], texture[0], format)
+  genTexture(textures[2], image, format)
   gl.TexParameteri(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, gl.TRUE)
 }
 
@@ -106,10 +104,10 @@ func LoadImage(path string) (image *sdl.Surface, format gl.GLenum) {
   return image, format
 }
 
-func genTexture(into gl.GLuint, from *sdl.Surface, format gl.GLenum) {
-  gl.BindTexture(gl.TEXTURE_2D, into)
-  gl.TexImage2D(gl.TEXTURE_2D, 0, 3, gl.GLsizei(from.W), gl.GLsizei(from.H),
-    0, format, gl.UNSIGNED_BYTE, unsafe.Pointer(from.Pixels),
+func genTexture(into gl.Texture, from *sdl.Surface, format gl.GLenum) {
+  gl.BindTexture(gl.TEXTURE_2D, uint(into))
+  gl.TexImage2D(gl.TEXTURE_2D, 0, 3, int(from.W), int(from.H),
+    0, format, gl.UNSIGNED_BYTE, from.Pixels,
   )
 }
 
@@ -121,8 +119,7 @@ func SetupWorld(path string) {
   triangles := vector.Vector{triangle}
   tindex := 0
 
-  lines := bytes.Split(content, []byte("\n"), 0)
-
+  lines := bytes.Split(content, []byte("\n"))
   for _, line := range lines {
     fields := bytes.Fields(line)
 
@@ -145,13 +142,13 @@ func SetupWorld(path string) {
   }
 
   sector1 = make(Sector, triangles.Len())
-  for idx, tri := range triangles.Data() {
+  for idx, tri := range triangles {
     sector1[idx] = tri.(*Triangle)
   }
 }
 
 func atof(s []byte) gl.GLfloat {
-  f, err := strconv.Atof(string(s))
+  f, err := strconv.Atof32(string(s))
   if err != nil { panic(err) }
   return gl.GLfloat(f)
 }
@@ -173,7 +170,7 @@ func resizeWindow(width, height int) {
   }
 
   // Setup our viewport
-  gl.Viewport(0, 0, gl.GLsizei(width), gl.GLsizei(height))
+  gl.Viewport(0, 0, width, height)
 
   // change to the projection matrix and set our viewing volume.
   gl.MatrixMode(gl.PROJECTION)
@@ -192,7 +189,7 @@ func resizeWindow(width, height int) {
   bottom := -top
   left := aspect * bottom
   right := aspect * top
-  gl.Frustum(left, right, bottom, top, near, far)
+  gl.Frustum(float64(left), float64(right), float64(bottom), float64(top), float64(near), float64(far))
 
   // Make sure we're changing the model view and not the projection
   gl.MatrixMode(gl.MODELVIEW)
@@ -260,9 +257,9 @@ func initGL() {
   gl.DepthFunc(gl.LEQUAL)
   gl.Hint(gl.PERSPECTIVE_CORRECTION_HINT, gl.NICEST)
 
-  gl.Lightfv(gl.LIGHT1, gl.AMBIENT,  (*gl.GLfloat)(unsafe.Pointer(&lightAmbient )))
-  gl.Lightfv(gl.LIGHT1, gl.DIFFUSE,  (*gl.GLfloat)(unsafe.Pointer(&lightDiffuse )))
-  gl.Lightfv(gl.LIGHT1, gl.POSITION, (*gl.GLfloat)(unsafe.Pointer(&lightPosition)))
+  gl.Lightfv(gl.LIGHT1, gl.AMBIENT, lightAmbient[:])
+  gl.Lightfv(gl.LIGHT1, gl.DIFFUSE, lightDiffuse[:]) 
+  gl.Lightfv(gl.LIGHT1, gl.POSITION, lightPosition[:])
   gl.Enable(gl.LIGHT1)
 
   gl.Color4f(1.0, 1.0, 1.0, 0.5)
@@ -283,20 +280,20 @@ func drawGLScene(sector Sector) {
   gl.LoadIdentity()
 
   // Rotate up and down to look up and down
-  gl.Rotatef(lookupdown, 1.0, 0.0, 0.0)
+  gl.Rotatef(float32(lookupdown), 1.0, 0.0, 0.0)
   // Rotate depending on direction player is facing
-  gl.Rotatef(scenroty, 0.0, 1.0, 0.0)
+  gl.Rotatef(float32(scenroty), 0.0, 1.0, 0.0)
   // translate the scene based on player position
-  gl.Translatef(xtrans, ytrans, ztrans)
+  gl.Translatef(float32(xtrans), float32(ytrans), float32(ztrans))
 
-  gl.BindTexture(gl.TEXTURE_2D, textures[filter])
+  gl.BindTexture(gl.TEXTURE_2D, uint(textures[filter]))
 
   for _, vertices := range sector {
     gl.Begin(gl.TRIANGLES)
     for _, triangle := range *vertices {
       gl.Normal3f(0.0, 0.0, 1.0)
-      gl.TexCoord2f(triangle.u, triangle.v)
-      gl.Vertex3f(triangle.x, triangle.y, triangle.z)
+      gl.TexCoord2f(float32(triangle.u), float32(triangle.v))
+      gl.Vertex3f(float32(triangle.x), float32(triangle.y), float32(triangle.z))
     }
     gl.End()
   }
@@ -331,7 +328,7 @@ func main() {
   // FIXME: this causes segfault.
   // videoFlags |= sdl.RESIZABLE // Enable window resizing
 
-  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, videoFlags)
+  surface = sdl.SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, uint32(videoFlags))
 
   if surface == nil {
     panic("Video mode set failed: " + sdl.GetError())
@@ -346,24 +343,24 @@ func main() {
   // wait for events
   running := true
   isActive := true
-  event := sdl.Event{}
   for running {
-    for event.Poll() {
-      switch event.Type {
-      case sdl.ACTIVEEVENT:
-        isActive = event.Active().Gain != 0
-      case sdl.VIDEORESIZE:
-        resize := event.Resize()
-        width, height := int(resize.W), int(resize.H)
-        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, videoFlags)
-
+  for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
+      switch e := ev.(type) {
+      case *sdl.ActiveEvent:
+        isActive = e.Gain != 0
+      case *sdl.ResizeEvent:
+        width, height := int(e.W), int(e.H)
+        surface = sdl.SetVideoMode(width, height, SCREEN_BPP, uint32(videoFlags))
         if surface == nil {
-          panic("Could not get a surface after resize:" + sdl.GetError())
+          fmt.Println("Could not get a surface after resize:", sdl.GetError())
+          Quit(1)
         }
         resizeWindow(width, height)
-      case sdl.KEYDOWN:
-        handleKeyPress(event.Keyboard().Keysym)
-      case sdl.QUIT:
+      case *sdl.KeyboardEvent:
+        if (e.Type == sdl.KEYDOWN) {
+          handleKeyPress(e.Keysym)
+        }
+      case *sdl.QuitEvent:
         running = false
       }
     }
