@@ -5,8 +5,8 @@ import (
   "gl"
   "math"
   "os"
-  "rand"
-  "sdl"
+  "math/rand"
+  "github.com/banthar/Go-SDL/sdl"
 )
 
 func p(a ...interface{}) { fmt.Println(a) }
