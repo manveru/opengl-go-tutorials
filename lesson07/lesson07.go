@@ -5,7 +5,7 @@ import (
   "gl"
   "gl/glu"
   "os"
-  "sdl"
+  "github.com/banthar/Go-SDL/sdl"
   "math"
 )
 

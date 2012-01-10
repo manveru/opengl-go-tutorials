@@ -5,7 +5,7 @@ import (
   "gl"
   "math"
   "os"
-  "sdl"
+  "github.com/banthar/Go-SDL/sdl"
 )
 
 const (

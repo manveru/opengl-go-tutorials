@@ -8,8 +8,7 @@ import (
   "bytes"
   "math"
   "os"
-  "sdl"
-  "container/vector"
+  "github.com/banthar/Go-SDL/sdl"
 )
 
 const (
@@ -116,7 +115,7 @@ func SetupWorld(path string) {
   if err != nil { panic(err) }
 
   triangle := &Triangle{}
-  triangles := vector.Vector{triangle}
+  triangles := []*Triangle{triangle}
   tindex := 0
 
   lines := bytes.Split(content, []byte("\n"))
@@ -134,21 +133,21 @@ func SetupWorld(path string) {
         triangle[idx] = vertex
       } else {
         triangle = &Triangle{vertex}
-        triangles.Push(triangle)
+        triangles = append(triangles, triangle)
       }
 
       tindex++
     }
   }
 
-  sector1 = make(Sector, triangles.Len())
+  sector1 = make(Sector, len(triangles))
   for idx, tri := range triangles {
-    sector1[idx] = tri.(*Triangle)
+    sector1[idx] = tri
   }
 }
 
 func atof(s []byte) gl.GLfloat {
-  f, err := strconv.Atof32(string(s))
+  f, err := strconv.ParseFloat(string(s), 32)
   if err != nil { panic(err) }
   return gl.GLfloat(f)
 }

@@ -4,7 +4,7 @@ import (
   "fmt"
   "gl"
   "os"
-  "sdl"
+  "github.com/banthar/Go-SDL/sdl"
   "math"
 )
 
