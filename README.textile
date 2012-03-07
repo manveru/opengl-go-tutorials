@@ -1,4 +1,0 @@
-h1. Tutorials for OpenGL in Go
-
-Tutorials translated from "NeHe Productions":http://nehe.gamedev.net/ into Go with SDL.
-Needs "Go-OpenGL":http://github.com/banthar/Go-OpenGL and "Go-SDL":http://github.com/banthar/Go-SDL installed.
